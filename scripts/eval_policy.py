@@ -23,7 +23,7 @@ import tyro
 from gr00t.data.dataset import LeRobotSingleDataset
 from gr00t.data.embodiment_tags import EMBODIMENT_TAG_MAPPING
 from gr00t.eval.robot import RobotInferenceClient
-from gr00t.experiment.data_config import DATA_CONFIG_MAP
+from gr00t.experiment.data_config import load_data_config
 from gr00t.model.policy import BasePolicy, Gr00tPolicy
 from gr00t.utils.eval import calc_mse_for_single_trajectory
 
@@ -55,14 +55,21 @@ class ArgsConfig:
     modality_keys: List[str] = field(default_factory=lambda: ["right_arm", "left_arm"])
     """Modality keys to evaluate."""
 
-    data_config: Literal[tuple(DATA_CONFIG_MAP.keys())] = "fourier_gr1_arms_only"
-    """Data config to use."""
+    data_config: str = "fourier_gr1_arms_only"
+    """
+    Data config to use, e.g. so100, fourier_gr1_arms_only, unitree_g1, etc.
+    Or a path to a custom data config file. e.g. "module:ClassName" format.
+    See gr00t/experiment/data_config.py for more details.
+    """
 
     steps: int = 150
     """Number of steps to evaluate."""
 
     trajs: int = 1
     """Number of trajectories to evaluate."""
+
+    start_traj: int = 0
+    """Start trajectory to evaluate."""
 
     action_horizon: int = None
     """Action horizon to evaluate. If None, will use the data config's action horizon."""
@@ -85,9 +92,12 @@ class ArgsConfig:
     save_plot_path: str = None
     """Path to save the plot."""
 
+    plot_state: bool = False
+    """Whether to plot the state."""
+
 
 def main(args: ArgsConfig):
-    data_config = DATA_CONFIG_MAP[args.data_config]
+    data_config = load_data_config(args.data_config)
 
     # Set action_horizon from data config if not provided
     if args.action_horizon is None:
@@ -145,7 +155,7 @@ def main(args: ArgsConfig):
     print("Running on all trajs with modality keys:", args.modality_keys)
 
     all_mse = []
-    for traj_id in range(args.trajs):
+    for traj_id in range(args.start_traj, args.start_traj + args.trajs):
         print("Running trajectory:", traj_id)
         mse = calc_mse_for_single_trajectory(
             policy,
@@ -155,6 +165,7 @@ def main(args: ArgsConfig):
             steps=args.steps,
             action_horizon=args.action_horizon,
             plot=args.plot,
+            plot_state=args.plot_state,
             save_plot_path=args.save_plot_path,
         )
         print("MSE:", mse)
