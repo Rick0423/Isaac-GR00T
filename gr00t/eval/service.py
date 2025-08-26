@@ -16,6 +16,7 @@
 from dataclasses import dataclass
 from io import BytesIO
 from typing import Any, Callable, Dict
+import gr00t.utils.serialization as serialization
 
 import torch
 import zmq
@@ -24,15 +25,11 @@ import zmq
 class TorchSerializer:
     @staticmethod
     def to_bytes(data: dict) -> bytes:
-        buffer = BytesIO()
-        torch.save(data, buffer)
-        return buffer.getvalue()
+        return serialization.dumps(data)
 
     @staticmethod
     def from_bytes(data: bytes) -> dict:
-        buffer = BytesIO(data)
-        obj = torch.load(buffer, weights_only=False)
-        return obj
+        return serialization.loads(data)
 
 
 @dataclass
