@@ -11,7 +11,7 @@ def decode_custom_classes(obj):
     if "__ModalityConfig_class__" in obj:
         obj = ModalityConfig(**json.loads(obj["as_json"]))
     if "__ndarray_class__" in obj:
-        obj = np.load(io.BytesIO(obj["as_npy"]))
+        obj = np.load(io.BytesIO(obj["as_npy"]), allow_pickle=False)
     return obj
 
 
