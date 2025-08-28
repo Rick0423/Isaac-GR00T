@@ -353,6 +353,27 @@ By default, the `gr00t_finetune.py` imposes equal weights to all datasets, with 
 
 Yes, you can use LoRA finetuning to finetune the model. This can be enabled by indicating `--lora_rank 64  --lora_alpha 128` in the finetuning script. However, we recommend using the full model finetuning for better performance.
 
+*How to use GR00T on Blackwell Architecture?*
+
+The SO-101 demo has been tested on an RTX Pro 6000 Workstation Edition GPU.
+
+ These were the steps necessary for testing. In short, what's different is installing a particular version of PyTorch, then building Flash Attention from source, then using it. These instructions may need to be adapted for your particular machine.
+
+1. Clone the GR00T repo.
+2. Create and activate a GR00T conda environment as normal.
+3. Install a stable version of PyTorch according to your CUDA version. Find the correct version using the helper website [here](https://pytorch.org/get-started/locally/). Example for CUDA 12.8:
+`pip3 install torch torchvision`
+4. To confirm compatability between torch and CUDA versions:
+`python -c "import torch; print(torch.version.cuda); print(torch.cuda.get_device_capability())"`
+5. Clone the `flash_attention` repo: 
+`git clone https://github.com/Dao-AILab/flash-attention.git`
+6. Checkout a recent version: `git checkout v2.8.3`
+7. Set the following environment variable in your terminal:
+`export TORCH_CUDA_ARCH_LIST="sm_120"`
+8. `cd flash-attention`
+9. Install flash-attn by running the following inside the flash-attention repo: `pip install .`
+10. Continue to post-training.
+
 # Contributing
 
 For more details, see [CONTRIBUTING.md](CONTRIBUTING.md)
