@@ -7,7 +7,6 @@ import numpy as np
 import torch
 import tqdm
 import tyro
-
 from libero.libero import benchmark
 
 from examples.Libero.eval.utils import (
