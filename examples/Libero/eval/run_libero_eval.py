@@ -1,3 +1,4 @@
+import os
 import pprint
 from dataclasses import dataclass
 
@@ -6,6 +7,7 @@ import numpy as np
 import torch
 import tqdm
 import tyro
+
 from libero.libero import benchmark
 
 from examples.Libero.eval.utils import (
@@ -16,6 +18,9 @@ from examples.Libero.eval.utils import (
     quat2axisangle,
     save_rollout_video,
 )
+
+log_dir = "/tmp/logs"
+os.makedirs(log_dir, exist_ok=True)  # ensures directory exists
 
 
 def summarize_obs(obs_dict):
@@ -56,8 +61,10 @@ class GenerateConfig:
     num_trials_per_task: int = 5                    # Number of rollouts per task
     #################################################################################################################
     # fmt: on
-    port: int = 5555
     """Port to connect to."""
+    port: int = 5555
+    """Headless mode (no GUI)."""
+    headless: bool = False
 
 
 class GR00TPolicy:
@@ -76,12 +83,13 @@ class GR00TPolicy:
         },
     }
 
-    def __init__(self, host="localhost", port=5555):
+    def __init__(self, host="localhost", port=5555, headless=False):
         from gr00t.eval.service import ExternalRobotInferenceClient
 
         self.policy = ExternalRobotInferenceClient(host=host, port=port)
         self.config = self.LIBERO_CONFIG
         self.action_keys = ["x", "y", "z", "roll", "pitch", "yaw", "gripper"]
+        self.headless = headless
 
     def get_action(self, observation_dict, lang: str):
         """Get action from GR00T policy given observation and language instruction."""
@@ -108,7 +116,8 @@ class GR00TPolicy:
             "state.gripper": np.expand_dims(gripper, axis=0),
             "annotation.human.action.task_description": [lang],
         }
-        show_obs_images_cv2(new_obs)
+        if not self.headless:
+            show_obs_images_cv2(new_obs)
         return new_obs
 
     def _convert_to_libero_action(
@@ -138,7 +147,7 @@ def eval_libero(cfg: GenerateConfig) -> None:
     task_suite = benchmark_dict[cfg.task_suite_name]()
     num_tasks_in_suite = task_suite.n_tasks
     print(f"Task suite: {cfg.task_suite_name}")
-    log_file = open(f"/tmp/logs/libero_eval_{cfg.task_suite_name}.log", "w")
+    log_file = open(f"{log_dir}/libero_eval_{cfg.task_suite_name}.log", "w")
     log_file.write(f"Task suite: {cfg.task_suite_name}\n")
 
     # Start evaluation
@@ -153,7 +162,7 @@ def eval_libero(cfg: GenerateConfig) -> None:
         # Initialize LIBERO environment and task description
         env, task_description = get_libero_env(task, resolution=256)
 
-        gr00t_policy = GR00TPolicy(host="localhost", port=cfg.port)
+        gr00t_policy = GR00TPolicy(host="localhost", port=cfg.port, headless=cfg.headless)
 
         # Start episodes
         task_episodes, task_successes = 0, 0
