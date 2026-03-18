@@ -78,10 +78,21 @@ class Gr00tPolicy(BasePolicy):
         super().__init__(strict=strict)
         model_dir = Path(model_path)
 
-        # Load the pretrained model and move to target device with bfloat16 precision
-        model = AutoModel.from_pretrained(model_dir)
+        # Disable FlashAttention2 on CPU-only environments.
+        if isinstance(device, int):
+            device_type = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            device_type = torch.device(device).type
+
+        model_load_kwargs = {}
+        if device_type == "cpu":
+            model_load_kwargs["attn_implementation"] = "eager"
+
+        # Load the pretrained model and move to target device
+        model = AutoModel.from_pretrained(model_dir, **model_load_kwargs)
         model.eval()  # Set model to evaluation mode
-        model.to(device=device, dtype=torch.bfloat16)
+        model_dtype = torch.float32 if device_type == "cpu" else torch.bfloat16
+        model.to(device=device, dtype=model_dtype)
         self.model = model
 
         # Load the processor for input/output transformation

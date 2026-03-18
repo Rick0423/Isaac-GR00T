@@ -79,6 +79,7 @@ class Eagle3_VLForConditionalGeneration(Eagle3_VLPreTrainedModel, GenerationMixi
     config_class = Eagle3_VLConfig
     def __init__(self, config: Eagle3_VLConfig, vision_model=None, language_model=None):
         super().__init__(config)
+        use_flash_attention = torch.cuda.is_available()
 
         self.select_layer = config.select_layer
         self.template = config.template
@@ -93,10 +94,14 @@ class Eagle3_VLForConditionalGeneration(Eagle3_VLPreTrainedModel, GenerationMixi
             if config.vision_config.model_type == 'intern_vit_6b':
                 self.vision_model = InternVisionModel(config.vision_config)
             elif config.vision_config.model_type == 'siglip_vision_model':
-                config.vision_config._attn_implementation = 'flash_attention_2'
+                config.vision_config._attn_implementation = (
+                    'flash_attention_2' if use_flash_attention else 'eager'
+                )
                 self.vision_model = SiglipVisionModel(config.vision_config)
             elif config.vision_config.model_type == 'siglip2_vision_model':
-                config.vision_config._attn_implementation = 'flash_attention_2'
+                config.vision_config._attn_implementation = (
+                    'flash_attention_2' if use_flash_attention else 'eager'
+                )
                 self.vision_model = Siglip2VisionModel(config.vision_config)
             elif config.vision_config.model_type == 'radio':
                 self.vision_model = RADIOModel(config.vision_config)
@@ -109,10 +114,16 @@ class Eagle3_VLForConditionalGeneration(Eagle3_VLPreTrainedModel, GenerationMixi
             elif config.text_config.architectures[0] == 'Phi3ForCausalLM':
                 self.language_model = Phi3ForCausalLM(config.text_config)
             elif config.text_config.architectures[0] == 'Qwen2ForCausalLM':
-                assert config.text_config._attn_implementation == 'flash_attention_2', f"Qwen2 must use flash_attention_2 but got {config.text_config._attn_implementation}"
+                if use_flash_attention and config.text_config._attn_implementation != 'flash_attention_2':
+                    raise AssertionError(
+                        f"Qwen2 must use flash_attention_2 but got {config.text_config._attn_implementation}"
+                    )
                 self.language_model = Qwen2ForCausalLM(config.text_config)
             elif config.text_config.architectures[0] == 'Qwen3ForCausalLM':
-                assert config.text_config._attn_implementation == 'flash_attention_2', f"Qwen3 must use flash_attention_2 but got {config.text_config._attn_implementation}"
+                if use_flash_attention and config.text_config._attn_implementation != 'flash_attention_2':
+                    raise AssertionError(
+                        f"Qwen3 must use flash_attention_2 but got {config.text_config._attn_implementation}"
+                    )
                 self.language_model = Qwen3ForCausalLM(config.text_config)
             else:
                 raise NotImplementedError(f'{config.text_config.architectures[0]} is not implemented.')
@@ -412,4 +423,3 @@ class Eagle3_VLForConditionalGeneration(Eagle3_VLPreTrainedModel, GenerationMixi
     # Copied from transformers.models.llava_next.modeling_llava_next.LlavaNextForConditionalGeneration.get_decoder
     def get_decoder(self):
         return self.language_model.get_decoder()
-

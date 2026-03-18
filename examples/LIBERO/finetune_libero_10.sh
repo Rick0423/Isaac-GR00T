@@ -1,10 +1,10 @@
 set -x -e
 
-export NUM_GPUS=8
+export NUM_GPUS=1
 
 torchrun --nproc_per_node=$NUM_GPUS --master_port=29500 \
     gr00t/experiment/launch_finetune.py \
-    --base_model_path nvidia/GR00T-N1.6-3B \
+    --base_model_path /root/autodl-tmp/Isaac-GR00T/models/GR00T-N1.6-3B \
     --dataset_path examples/LIBERO/libero_10_no_noops_1.0.0_lerobot/ \
     --embodiment_tag LIBERO_PANDA \
     --num_gpus $NUM_GPUS \
@@ -18,5 +18,5 @@ torchrun --nproc_per_node=$NUM_GPUS --master_port=29500 \
     --use_wandb \
     --global_batch_size 640 \
     --color_jitter_params brightness 0.3 contrast 0.4 saturation 0.5 hue 0.08 \
-    --dataloader_num_workers 4 \
+    --dataloader_num_workers 1 \
     --state_dropout_prob 0.8

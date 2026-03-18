@@ -30,21 +30,20 @@ class EagleBackbone(torch.nn.Module):
 
         super().__init__()
 
-        # Add attention kwargs
-        extra_kwargs = {}
-        if use_flash_attention:
-            extra_kwargs["attn_implementation"] = "flash_attention_2"
-        if load_bf16:
-            extra_kwargs["torch_dtype"] = torch.bfloat16
+        # FlashAttention2 and bf16 require CUDA in this runtime.
+        if use_flash_attention and not torch.cuda.is_available():
+            use_flash_attention = False
+        if load_bf16 and not torch.cuda.is_available():
+            load_bf16 = False
 
         if model_name == "nvidia/Eagle-Block2A-2B-v2":
-            assert use_flash_attention, (
-                "nvidia/Eagle-Block2A-2B-v2 requires flash attention by default"
-            )
-            assert load_bf16, "nvidia/Eagle-Block2A-2B-v2 requires bfloat16 by default"
             eagle_path = os.path.join(os.path.dirname(__file__), "nvidia", "Eagle-Block2A-2B-v2")
             config = AutoConfig.from_pretrained(eagle_path, trust_remote_code=True)
-            self.model = AutoModel.from_config(config, trust_remote_code=True)
+            config._attn_implementation = "flash_attention_2" if use_flash_attention else "eager"
+            model_kwargs = {}
+            if load_bf16:
+                model_kwargs["torch_dtype"] = torch.bfloat16
+            self.model = AutoModel.from_config(config, trust_remote_code=True, **model_kwargs)
         else:
             raise ValueError(f"Model {model_name} not supported")
 
